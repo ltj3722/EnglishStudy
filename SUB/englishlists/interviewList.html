@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample</title>
+    <style>
+        .center-align {
+            display: flex;
+            align-items: center;
+        }
+        .center-align img {
+            margin-left: 10px;
+        }
+		textarea {
+		  width: 600px;
+		  height: 60px;
+		}			
+		.teacher {
+		  font-weight: bold;
+		  color: orange;
+		}		
+		.conversation-box {
+		  border: 2px solid #555;
+		  padding: 15px;
+		  width: 500px;
+		  margin: 20px;
+		  border-radius: 10px;
+		  background-color: #f9f9f9;
+		}		
+        .orange-question {
+          background-color: orange;
+          padding: 2px 4px;
+        }
+    </style>
+    <script>
+        // サーバーからチェックボックスの状態をロードする関数
+        async function loadCheckboxStates() {
+            try {
+                const response = await fetch('/get-states');
+                if (!response.ok) {
+                    console.error('Failed to fetch states:', response.statusText);
+                    return;
+                }
+                const states = await response.json();
+
+                // チェックボックスの状態を復元
+                const checkboxes = document.querySelectorAll("input[type='checkbox']");
+                checkboxes.forEach((checkbox) => {
+                    const id = checkbox.id;
+    if (states[id] && typeof states[id].checked !== 'undefined') {
+        checkbox.checked = states[id].checked === true;
+    } else {
+        checkbox.checked = false; // データがない場合は未チェックにする
+    }
+
+                });
+				
+        // textareaの状態を復元
+        const textareas = document.querySelectorAll("textarea");
+        textareas.forEach((textarea) => {
+            const id = textarea.id;
+            if (states[id] !== undefined) {
+                textarea.value = states[id].answer;  // textareaの内容
+            }
+        });				
+				
+				
+				
+				
+            } catch (error) {
+                console.error('Error loading checkbox states:', error);
+            }
+        }
+
+async function saveCheckboxState(id) {
+    const checkbox = document.getElementById(id);
+    try {
+        if (id.includes('question')) {
+            await fetch('/save-state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id, checked: checkbox.checked, answer: null }),
+            });
+        } else if (id.includes('answer')) {
+            await fetch('/save-state', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: id, checked: null, answer: checkbox.value }),
+            });
+        }
+    } catch (error) {
+        console.error('Error saving checkbox state:', error);
+    }
+}
+
+        // ページ読み込み時にチェックボックスの状態をロード
+        window.onload = loadCheckboxStates;
+    </script>
+    <script>
+        const INTERVIEW_LIST_DATA_URL = "https://objectstorage.us-ashburn-1.oraclecloud.com/p/SB8Zfp95qWQB7bBHJUOMvbP5h7NayguHxocjzbohFrHvJ4xb6XsCQEd4OjU4lm49/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/interviewList.json";
+
+        let interviewListSaveTimer = null;
+        let interviewListSaveInProgress = false;
+        let interviewListPendingSave = false;
+
+        function getSyncStatusElement() {
+            let status = document.getElementById("syncStatus");
+            if (!status) {
+                status = document.createElement("div");
+                status.id = "syncStatus";
+                status.style.cssText = "position:sticky;top:0;z-index:9999;padding:8px 12px;margin:0 0 10px 0;font-size:14px;border-bottom:1px solid #ccc;background:#eef5ff;color:#174ea6;";
+                document.body.insertBefore(status, document.body.firstChild);
+            }
+            return status;
+        }
+
+        function setSyncStatus(message, type) {
+            if (!document.body) {
+                return;
+            }
+            const status = getSyncStatusElement();
+            status.textContent = message;
+
+            if (type === "error") {
+                status.style.background = "#fdecea";
+                status.style.color = "#b3261e";
+                status.style.borderBottomColor = "#f4b8b3";
+            } else if (type === "ok") {
+                status.style.background = "#e6f4ea";
+                status.style.color = "#137333";
+                status.style.borderBottomColor = "#b7dfc1";
+            } else {
+                status.style.background = "#eef5ff";
+                status.style.color = "#174ea6";
+                status.style.borderBottomColor = "#c6dafc";
+            }
+        }
+
+        function collectStatesFromPage() {
+            const states = {};
+
+            document.querySelectorAll("input[type='checkbox'][id]").forEach((checkbox) => {
+                states[checkbox.id] = {
+                    checked: checkbox.checked === true,
+                    answer: null
+                };
+            });
+
+            document.querySelectorAll("textarea[id]").forEach((textarea) => {
+                states[textarea.id] = {
+                    checked: null,
+                    answer: textarea.value || ""
+                };
+            });
+
+            return states;
+        }
+
+        function applyStatesToPage(states) {
+            document.querySelectorAll("input[type='checkbox'][id]").forEach((checkbox) => {
+                const saved = states[checkbox.id];
+                checkbox.checked = !!(saved && saved.checked === true);
+            });
+
+            document.querySelectorAll("textarea[id]").forEach((textarea) => {
+                const saved = states[textarea.id];
+                if (saved && typeof saved.answer === "string") {
+                    textarea.value = saved.answer;
+                } else if (saved && saved.answer == null) {
+                    textarea.value = "";
+                }
+            });
+        }
+
+        async function loadCheckboxStates() {
+            try {
+                setSyncStatus("Loading saved data from Object Storage...", "info");
+                const response = await fetch(INTERVIEW_LIST_DATA_URL, {
+                    method: "GET",
+                    cache: "no-store"
+                });
+
+                if (!response.ok) {
+                    throw new Error(`GET failed: ${response.status} ${response.statusText}`);
+                }
+
+                const states = await response.json();
+                applyStatesToPage(states && typeof states === "object" ? states : {});
+                setSyncStatus("Loaded from Object Storage.", "ok");
+            } catch (error) {
+                console.error("Error loading states from Object Storage:", error);
+                setSyncStatus(`Load failed: ${error.message}`, "error");
+            }
+        }
+
+        function saveCheckboxState() {
+            setSyncStatus("Saving to Object Storage...", "info");
+            clearTimeout(interviewListSaveTimer);
+            interviewListSaveTimer = setTimeout(saveAllStatesToObjectStorage, 700);
+        }
+
+        async function saveAllStatesToObjectStorage() {
+            if (interviewListSaveInProgress) {
+                interviewListPendingSave = true;
+                return;
+            }
+
+            interviewListSaveInProgress = true;
+            interviewListPendingSave = false;
+
+            try {
+                const response = await fetch(INTERVIEW_LIST_DATA_URL, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(collectStatesFromPage(), null, 2)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text().catch(() => "");
+                    throw new Error(`PUT failed: ${response.status} ${response.statusText}${errorText ? " - " + errorText.slice(0, 200) : ""}`);
+                }
+
+                setSyncStatus("Saved to Object Storage.", "ok");
+            } catch (error) {
+                console.error("Error saving states to Object Storage:", error);
+                setSyncStatus(`Save failed: ${error.message}`, "error");
+            } finally {
+                interviewListSaveInProgress = false;
+                if (interviewListPendingSave) {
+                    saveAllStatesToObjectStorage();
+                }
+            }
+        }
+
+        window.loadCheckboxStates = loadCheckboxStates;
+        window.saveCheckboxState = saveCheckboxState;
+        window.onload = loadCheckboxStates;
+    </script>
+</head>
+<body>
+<div class="conversation-box">
+<p><span class="teacher">teacher</span> : Please ask a question. (I will say the question number.)</p>
+<p><span class="student">student</span> : I will try to answer in my own answer.</p>
+<p><span class="teacher">teacher</span> : Please correct my answer and type it for me the corrected full text  in RereJob chatbox.</p>
+<p><span class="student">student</span> : I will update the corrected answer on the page.</p>
+</div>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question1" onclick="saveCheckboxState('question1')">   <span id="questionText" class="orange-question" style="font-size: 14pt;">●&nbsp;Are infectious diseases becoming a bigger problem today?</span><br><textarea id="answer1" oninput="saveCheckboxState('answer1')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question2" onclick="saveCheckboxState('question2')">   <span id="questionText" style="font-size: 14pt;">●&nbsp;Are Japanese companies conscientious about their female workers?</span><br><textarea id="answer2" oninput="saveCheckboxState('answer2')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question3" onclick="saveCheckboxState('question3')">   <span id="questionText" style="font-size: 14pt;">● Are teachers today too protective of their students?</span><br><textarea id="answer3" oninput="saveCheckboxState('answer3')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question4" onclick="saveCheckboxState('question4')">   <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do children these days spend enough time with their parents?</span><br><textarea id="answer4" oninput="saveCheckboxState('answer4')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question5" onclick="saveCheckboxState('question5')">   <span id="questionText" style="font-size: 14pt;">● Do you think it is good for people to spend time on social media?</mark></span><br><textarea id="answer5" oninput="saveCheckboxState('answer5')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question6" onclick="saveCheckboxState('question6')">   <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that efforts by developed countries can help to reduce global warming?</span></span><br><textarea id="answer6" oninput="saveCheckboxState('answer6')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question7" onclick="saveCheckboxState('question7')">   <span id="questionText" style="font-size: 14pt;">● Do you think that it is very difficult to study English in Japan?</span></span><br><textarea id="answer7" oninput="saveCheckboxState('answer7')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question8" onclick="saveCheckboxState('question8')">   <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that Japanese society is becoming better for foreign tourists?</span></span><br><textarea id="answer8" oninput="saveCheckboxState('answer8')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"> <input type="checkbox" id="question9" onclick="saveCheckboxState('question9')">   <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that local politicians these days care enough about their local community?</span></span><br><textarea id="answer9" oninput="saveCheckboxState('answer9')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question10" onclick="saveCheckboxState('question10')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that more people in Japan will be interested in having a career in manufacturing?</span></span><br><textarea id="answer10" oninput="saveCheckboxState('answer10')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question11" onclick="saveCheckboxState('question11')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that people should pay more attention to securing their homes?</span></span><br><textarea id="answer11" oninput="saveCheckboxState('answer11')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question12" onclick="saveCheckboxState('question12')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that public universities should be free of charge for everyone?</span></span><br><textarea id="answer12" oninput="saveCheckboxState('answer12')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question13" onclick="saveCheckboxState('question13')">  <span id="questionText" style="font-size: 14pt;">● Do you think that parents should control their child's academic performance?</span></span><br><textarea id="answer13" oninput="saveCheckboxState('answer13')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question14" onclick="saveCheckboxState('question14')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that the behavior of celebrities in public places sets a good example for citizens?</span></span><br><textarea id="answer14" oninput="saveCheckboxState('answer14')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question15" onclick="saveCheckboxState('question15')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that the Internet has a beneficial effect on society?</span></span><br><textarea id="answer15" oninput="saveCheckboxState('answer15')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question16" onclick="saveCheckboxState('question16')">  <span id="questionText" style="font-size: 14pt;">● Do you think that the government should ban smoking in all restaurants?</span></span><br><textarea id="answer16" oninput="saveCheckboxState('answer16')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question17" onclick="saveCheckboxState('question17')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think that TV programs today have too many restrictions?</span></span><br><textarea id="answer17" oninput="saveCheckboxState('answer17')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question18" onclick="saveCheckboxState('question18')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Do you think the government should have access to individuals' private communications for security purposes?</span></span><br><textarea id="answer18" oninput="saveCheckboxState('answer18')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question19" onclick="saveCheckboxState('question19')">  <span id="questionText" class="orange-question" style="font-size: 14pt;">● Has IT had a positive effect on school education?</span></span><br><textarea id="answer19" oninput="saveCheckboxState('answer19')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question20" onclick="saveCheckboxState('question20')">  <span id="questionText" style="font-size: 14pt;">● Is a part-time job necessary for students to be full-time workers?</span></span><br><textarea id="answer20" oninput="saveCheckboxState('answer20')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question21" onclick="saveCheckboxState('question21')">  <span id="questionText" style="font-size: 14pt;">● Should civilians consider carrying weapons to defend against invasion from other countries?</span></span><br><textarea id="answer21" oninput="saveCheckboxState('answer21')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question22" onclick="saveCheckboxState('question22')">  <span id="questionText" style="font-size: 14pt;">● Should each individual do more to reduce the amount of energy that we use?</span></span><br><textarea id="answer22" oninput="saveCheckboxState('answer22')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question23" onclick="saveCheckboxState('question23')">  <span id="questionText" style="font-size: 14pt;">● Should more be done to help homeless people in your city?</span></span><br><textarea id="answer23" oninput="saveCheckboxState('answer23')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question24" onclick="saveCheckboxState('question24')">  <span id="questionText" style="font-size: 14pt;">● Should parents teach children more about saving and spending money responsibly?</span></span><br><textarea id="answer24" oninput="saveCheckboxState('answer24')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question25" onclick="saveCheckboxState('question25')">  <span id="questionText" style="font-size: 14pt;">● Should people do more to protect endangered languages?</span></span><br><textarea id="answer25" oninput="saveCheckboxState('answer25')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question26" onclick="saveCheckboxState('question26')">  <span id="questionText" style="font-size: 14pt;">●&nbsp;Should the government introduce stricter immigration laws for people immigrating to Japan?</span></span><br><textarea id="answer26" oninput="saveCheckboxState('answer26')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question27" onclick="saveCheckboxState('question27')">  <span id="questionText" style="font-size: 14pt;">● Should the number of weekly working hours in Japan be decreased?</span></span><br><textarea id="answer27" oninput="saveCheckboxState('answer27')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question28" onclick="saveCheckboxState('question28')">  <span id="questionText" style="font-size: 14pt;">● Should we be taught more about the culture and traditions of the area where we live in?</span></span><br><textarea id="answer28" oninput="saveCheckboxState('answer28')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question29" onclick="saveCheckboxState('question29')">  <span id="questionText" style="font-size: 14pt;">● Should we push young children to start studying English as early as possible?</span></span><br><textarea id="answer29" oninput="saveCheckboxState('answer29')"></textarea></p>
+<p class="vk_block-margin-0--margin-top vk_block-margin-xxs--margin-bottom"><input type="checkbox" id="question30" onclick="saveCheckboxState('question30')">  <span id="questionText" style="font-size: 14pt;">● Were people in the past more in touch with the environment than people today are?</span></span><br><textarea id="answer30" oninput="saveCheckboxState('answer30')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question31" onclick="saveCheckboxState('question31')">  <span id="questionText" style="font-size: 14pt;">○ Does society provide sufficient support to families with children?</span><br><textarea id="answer31" oninput="saveCheckboxState('answer31')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question32" onclick="saveCheckboxState('question32')">  <span id="questionText" style="font-size: 14pt;">○ Do people in modern society put enough importance on spending time with the local community?</span><br><textarea id="answer32" oninput="saveCheckboxState('answer32')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question33" onclick="saveCheckboxState('question33')">  <span id="questionText" style="font-size: 14pt;">○ Do teachers today make their students work too hard?</span><br><textarea id="answer33" oninput="saveCheckboxState('answer33')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question34" onclick="saveCheckboxState('question34')">  <span id="questionText" style="font-size: 14pt;"><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">○ Do you think it is safe to trust online reviews when choosing a service?</mark></span><br><textarea id="answer34" oninput="saveCheckboxState('answer34')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question35" onclick="saveCheckboxState('question35')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that advertising for tobacco should be banned?</span><br><textarea id="answer35" oninput="saveCheckboxState('answer35')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question36" onclick="saveCheckboxState('question36')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that an education system encourages students to be productive persons?</span><br><textarea id="answer36" oninput="saveCheckboxState('answer36')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question37" onclick="saveCheckboxState('question37')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that it is acceptable to use disposable plastic utensils in many restaurants?</span><br><textarea id="answer37" oninput="saveCheckboxState('answer37')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question38" onclick="saveCheckboxState('question38')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that it is important for workers to change their jobs?</span><br><textarea id="answer38" oninput="saveCheckboxState('answer38')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question39" onclick="saveCheckboxState('question39')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that Japan should do more to promote its technologies to foreign countries?</span><br><textarea id="answer39" oninput="saveCheckboxState('answer39')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question40" onclick="saveCheckboxState('question40')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that many companies in Japan ask their employees to work extra hours?</span><br><textarea id="answer40" oninput="saveCheckboxState('answer40')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question41" onclick="saveCheckboxState('question41')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that new technology, such as AI, will make our lives better?</span><br><textarea id="answer41" oninput="saveCheckboxState('answer41')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question42" onclick="saveCheckboxState('question42')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that our society should become completely cashless?</span><br><textarea id="answer42" oninput="saveCheckboxState('answer42')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question43" onclick="saveCheckboxState('question43')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that parents today give too much freedom to their children?</span><br><textarea id="answer43" oninput="saveCheckboxState('answer43')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question44" onclick="saveCheckboxState('question44')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that people today are concerned enough about protecting endangered species?</span><br><textarea id="answer44" oninput="saveCheckboxState('answer44')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question45" onclick="saveCheckboxState('question45')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that reading helps young people develop a strong character?</span><br><textarea id="answer45" oninput="saveCheckboxState('answer45')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question46" onclick="saveCheckboxState('question46')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that students are less loyal to their teachers these days?</span><br><textarea id="answer46" oninput="saveCheckboxState('answer46')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question47" onclick="saveCheckboxState('question47')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that technology will create more job opportunities in the future?</span><br><textarea id="answer47" oninput="saveCheckboxState('answer47')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question48" onclick="saveCheckboxState('question48')">  <span id="questionText" style="font-size: 14pt;">○&nbsp;Do you think that the number of young people who live with their parents after they finish their education will increase in the future?</span><br><textarea id="answer48" oninput="saveCheckboxState('answer48')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question49" onclick="saveCheckboxState('question49')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that the quality of medical services in Japan is declining?</span><br><textarea id="answer49" oninput="saveCheckboxState('answer49')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question50" onclick="saveCheckboxState('question50')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that the unmarried rate in Japan will increase in the future?</span><br><textarea id="answer50" oninput="saveCheckboxState('answer50')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question51" onclick="saveCheckboxState('question51')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that unemployment increases because of IT?</span><br><textarea id="answer51" oninput="saveCheckboxState('answer51')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question52" onclick="saveCheckboxState('question52')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that universities should offer more scholarships for good students?</span><br><textarea id="answer52" oninput="saveCheckboxState('answer52')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question53" onclick="saveCheckboxState('question53')">  <span id="questionText" style="font-size: 14pt;">○ Do you think that young people in Japan care enough about global warming?</span><br><textarea id="answer53" oninput="saveCheckboxState('answer53')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question54" onclick="saveCheckboxState('question54')">  <span id="questionText" style="font-size: 14pt;">○ Do you think there will be more essay-writing exams in universities in the future?</span><br><textarea id="answer54" oninput="saveCheckboxState('answer54')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question55" onclick="saveCheckboxState('question55')">  <span id="questionText" style="font-size: 14pt;">○ Is it possible to create cleaner air in most modern cities?</span><br><textarea id="answer55" oninput="saveCheckboxState('answer55')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question56" onclick="saveCheckboxState('question56')">  <span id="questionText" style="font-size: 14pt;">○ Is the elimination of COVID-19 an attainable goal?</span><br><textarea id="answer56" oninput="saveCheckboxState('answer56')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question57" onclick="saveCheckboxState('question57')">  <span id="questionText" style="font-size: 14pt;">○ Should governments have to provide child-care facilities for their civilians?</span><br><textarea id="answer57" oninput="saveCheckboxState('answer57')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question58" onclick="saveCheckboxState('question58')">  <span id="questionText" style="font-size: 14pt;">○ Should people believe more about what the news media reports?</span><br><textarea id="answer58" oninput="saveCheckboxState('answer58')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question59" onclick="saveCheckboxState('question59')">  <span id="questionText" style="font-size: 14pt;">○ Should we give up holding coal-fired power stations in Japan?</span><br><textarea id="answer59" oninput="saveCheckboxState('answer59')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question60" onclick="saveCheckboxState('question60')">  <span id="questionText" style="font-size: 14pt;">○ Will Japan's population continue to decrease in the future?</span><br><textarea id="answer60" oninput="saveCheckboxState('answer60')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question61" onclick="saveCheckboxState('question61')">  <span id="questionText" style="font-size: 14pt;"><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-vivid-red-color">◎ Fewer children are being born in Japan, creating future challenges. Should the government do more to increase the birth rate in Japan?</mark></span><br><textarea id="answer61" oninput="saveCheckboxState('answer61')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question62" onclick="saveCheckboxState('question62')">  <span id="questionText" style="font-size: 14pt;">◎ <span style="color: #ff00ff;"><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-black-color">Global warming is a crucial issue for all of us to tackle.</mark></span><strong> </strong>Are humans capable of reversing the ongoing climate change across the globe?</span><br><textarea id="answer62" oninput="saveCheckboxState('answer62')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question63" onclick="saveCheckboxState('question63')">  <span id="questionText" style="font-size: 14pt;">◎ In Japan, low participation in elections has become a significant issue.</span> <span style="font-size: 14pt;">Do you think that young people today do enough to contribute to politics?</span><br><textarea id="answer63" oninput="saveCheckboxState('answer63')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question64" onclick="saveCheckboxState('question64')">  <span id="questionText" style="font-size: 14pt;">◎ Japan imports a lot of food.</span> <span style="font-size: 14pt;">Do you think that Japan can produce enough food for all its residents in Japan?</span><br><textarea id="answer64" oninput="saveCheckboxState('answer64')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question65" onclick="saveCheckboxState('question65')">  <span id="questionText" style="font-size: 14pt;">◎ Japan is becoming an aging society.</span> <span style="font-size: 14pt;">Should more be done to improve the pension system in Japan?</span><br><textarea id="answer65" oninput="saveCheckboxState('answer65')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question66" onclick="saveCheckboxState('question66')">  <span id="questionText" style="font-size: 14pt;">◎ Japan is going to be an aging society.</span><strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong><span style="font-size: 14pt;">Do you think it is a good idea for companies to hold back the date of the mandatory retirement age?</span><br><textarea id="answer66" oninput="saveCheckboxState('answer66')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question67" onclick="saveCheckboxState('question67')">  <span id="questionText" style="font-size: 14pt;">◎<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Japan's labor force is shrinking year by year.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Should the Japanese government accept more immigrants from developing countries?</span><br><textarea id="answer67" oninput="saveCheckboxState('answer67')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question68" onclick="saveCheckboxState('question68')">  <span id="questionText" style="font-size: 14pt;">◎ Most people today have their own smartphones.</span> <span style="font-size: 14pt;">Do people today rely too much on their mobile devices such as smartphones and iPads?</span><br><textarea id="answer68" oninput="saveCheckboxState('answer68')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question69" onclick="saveCheckboxState('question69')">  <span id="questionText" style="font-size: 14pt;">◎ People's interest in the environment is increasing day by day.</span> <span style="font-size: 14pt;">Is recycling the best way for society to help the environment?</span><br><textarea id="answer69" oninput="saveCheckboxState('answer69')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question70" onclick="saveCheckboxState('question70')">  <span id="questionText" style="font-size: 14pt;">◎ Some employees who have been with a company for a long time tend to have higher salaries.</span> <span style="font-size: 14pt;">Should companies pay salaries based more on job performance than on seniority?</span><br><textarea id="answer70" oninput="saveCheckboxState('answer70')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question71" onclick="saveCheckboxState('question71')">  <span id="questionText" style="font-size: 14pt;">◎ Some kids don't work and never earn after their education. Do parents have a responsibility to provide financial support for those unemployed children?</span><br><textarea id="answer71" oninput="saveCheckboxState('answer71')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question72" onclick="saveCheckboxState('question72')">  <span id="questionText" style="font-size: 14pt;">◎ Some people don't go to vote in elections in Japan. Do you think that the common people can influence the decisions made by the government?</span><br><textarea id="answer72" oninput="saveCheckboxState('answer72')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question73" onclick="saveCheckboxState('question73')">  <span id="questionText" style="font-size: 14pt;">◎ Some people enjoy their free time in public parks.</span> <span style="font-size: 14pt;">Are local governments providing enough public services in Japan?</span><br><textarea id="answer73" oninput="saveCheckboxState('answer73')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question74" onclick="saveCheckboxState('question74')">  <span id="questionText" style="font-size: 14pt;">◎ Some people were against the Tokyo Olympics 2020.</span> <span style="font-size: 14pt;">Do you think that the Olympic Games are beneficial to society?</span><br><textarea id="answer74" oninput="saveCheckboxState('answer74')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question75" onclick="saveCheckboxState('question75')">  <span id="questionText" style="font-size: 14pt;">◎ Some say many young people are not very interested in politics.</span> <span style="font-size: 14pt;">Do you think that young voters can influence politics in Japan? </span><br><textarea id="answer75" oninput="saveCheckboxState('answer75')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question76" onclick="saveCheckboxState('question76')">  <span id="questionText" style="font-size: 14pt;"><strong>◎<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Some say physical punishment is necessary to develop elite athletes.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Should school club coaches be allowed to hit students to improve their athletic skills?</span><br><textarea id="answer76" oninput="saveCheckboxState('answer76')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question77" onclick="saveCheckboxState('question77')">  <span id="questionText" style="font-size: 14pt;">◎ Some say they haven't seen Japan's technological innovation for a long time.</span> <span style="font-size: 14pt;">Do you think that Japanese technology today will stay competitive in the global market?</span><br><textarea id="answer77" oninput="saveCheckboxState('answer77')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question78" onclick="saveCheckboxState('question78')">  <span id="questionText" style="font-size: 14pt;">◎ Some young people love to post their private pictures on social media.</span> <span style="font-size: 14pt;">Should more be done to prevent people from disclosing their personal information on the Internet?</span><br><textarea id="answer78" oninput="saveCheckboxState('answer78')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question79" onclick="saveCheckboxState('question79')">  <span id="questionText" style="font-size: 14pt;">◎<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>The concentration of the population in cities is a problem.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Should the government limit the number of people living and visiting the Tokyo area?</span><br><textarea id="answer79" oninput="saveCheckboxState('answer79')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question80" onclick="saveCheckboxState('question80')">  <span id="questionText" style="font-size: 14pt;">◎ The development of information technology is tremendous.</span> <span style="font-size: 14pt;">Is a mobile phone changing too quickly for people to keep up with?</span><br><textarea id="answer80" oninput="saveCheckboxState('answer80')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question81" onclick="saveCheckboxState('question81')">  <span id="questionText" style="font-size: 14pt;">◎ The frequency of severe natural disasters is a growing concern.</span> <span style="font-size: 14pt;">Are natural disasters more devastating than ever before?</span><br><textarea id="answer81" oninput="saveCheckboxState('answer81')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question82" onclick="saveCheckboxState('question82')">  <span id="questionText" style="font-size: 14pt;">◎<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>The government has to implement various policies for the benefit of its citizens. Should the government lower taxes to improve our standards of living?</span><br><textarea id="answer82" oninput="saveCheckboxState('answer82')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question83" onclick="saveCheckboxState('question83')">  <span id="questionText" style="font-size: 14pt;">◎ The media is often criticized for its excessive interviews.</span> <span style="font-size: 14pt;">Do you think the media pays too much attention to celebrities’ private lives?</span><br><textarea id="answer83" oninput="saveCheckboxState('answer83')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question84" onclick="saveCheckboxState('question84')">  <span id="questionText" style="font-size: 14pt;">◎<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>The number of Japanese students studying abroad is decreasing.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Should the Japanese government provide young people with more opportunities to study abroad?</span><br><textarea id="answer84" oninput="saveCheckboxState('answer84')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question85" onclick="saveCheckboxState('question85')">  <span id="questionText" style="font-size: 14pt;">◎ There are always wars and conflicts happening somewhere in the world.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong>Should people make more effort to contribute to world peace?</span><br><textarea id="answer85" oninput="saveCheckboxState('answer85')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question86" onclick="saveCheckboxState('question86')">  <span id="questionText" style="font-size: 14pt;">◎ There are many abandoned farmlands in Japan.</span> <span style="font-size: 14pt;">Should more be done to improve agriculture in Japan?</span><br><textarea id="answer86" oninput="saveCheckboxState('answer86')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question87" onclick="saveCheckboxState('question87')">  <span id="questionText" style="font-size: 14pt;">◎ The widespread use of social media promotes global interaction.</span> <span style="font-size: 14pt;">Can social media help bring different nations closer together?</span><br><textarea id="answer87" oninput="saveCheckboxState('answer87')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question88" onclick="saveCheckboxState('question88')">  <span id="questionText" style="font-size: 14pt;">◎ Thousands of tablet computers have been introduced to some schools in Japan.</span> <span style="font-size: 14pt;">Are Japanese high schools doing enough to improve their education systems?</span><br><textarea id="answer88" oninput="saveCheckboxState('answer88')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question89" onclick="saveCheckboxState('question89')">  <span id="questionText" style="font-size: 14pt;">◎<mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark>Today, anyone can speak freely on the Internet.<strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-pale-pink-color"> </mark></strong><mark style="background-color:rgba(0, 0, 0, 0)" class="has-inline-color has-black-color">Should social media be responsible for checking hate speech online?</mark></span><br><textarea id="answer89" oninput="saveCheckboxState('answer89')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">                              <input type="checkbox" id="question90" onclick="saveCheckboxState('question90')">  <span id="questionText" style="font-size: 14pt;">◎ Today, many people enjoy posting and watching various content on social media.</span> <span style="font-size: 14pt;">Is social media consuming too much of our lives?</span><br><textarea id="answer90" oninput="saveCheckboxState('answer90')"></textarea></p>
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question91" onclick="saveCheckboxState('question91')">                              <span id="questionText" style="font-size: 14pt;"> Should junk food be taxed to encouragehealthier eating habits?      </span><br>    <textarea id="answer91" oninput="saveCheckboxState('answer91')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question92" onclick="saveCheckboxState('question92')">                              <span id="questionText" style="font-size: 14pt;"> Do you think pets should be allowedin workplaces?      </span><br>    <textarea id="answer92" oninput="saveCheckboxState('answer92')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question93" onclick="saveCheckboxState('question93')">                              <span id="questionText" style="font-size: 14pt;"> Is it better to live in a small town than a big city?      </span><br>    <textarea id="answer93" oninput="saveCheckboxState('answer93')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question94" onclick="saveCheckboxState('question94')">                              <span id="questionText" style="font-size: 14pt;"> ls eating out too often bad for your health?      </span><br>    <textarea id="answer94" oninput="saveCheckboxState('answer94')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question95" onclick="saveCheckboxState('question95')">                              <span id="questionText" style="font-size: 14pt;"> Do you think technology makes us less creative?      </span><br>    <textarea id="answer95" oninput="saveCheckboxState('answer95')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question96" onclick="saveCheckboxState('question96')">                              <span id="questionText" style="font-size: 14pt;"> Is a college education still worth it?      </span><br>    <textarea id="answer96" oninput="saveCheckboxState('answer96')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question97" onclick="saveCheckboxState('question97')">                              <span id="questionText" style="font-size: 14pt;"> Should people try to live sustainably?      </span><br>    <textarea id="answer97" oninput="saveCheckboxState('answer97')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question98" onclick="saveCheckboxState('question98')">                              <span id="questionText" style="font-size: 14pt;"> Should we be worried about artificial intelligence?      </span><br>    <textarea id="answer98" oninput="saveCheckboxState('answer98')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question99" onclick="saveCheckboxState('question99')">                              <span id="questionText" style="font-size: 14pt;"> ls it better to be an expert in one field or knowledgeable in many?      </span><br>    <textarea id="answer99" oninput="saveCheckboxState('answer99')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question100" onclick="saveCheckboxState('question100')">                            <span id="questionText" style="font-size: 14pt;"> Should public figures have a right to privacy?      </span><br>    <textarea id="answer100" oninput="saveCheckboxState('answer100')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question101" onclick="saveCheckboxState('question101')">                            <span id="questionText" style="font-size: 14pt;"> ls it more important to be liked or respected?      </span><br>    <textarea id="answer101" oninput="saveCheckboxState('answer101')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question102" onclick="saveCheckboxState('question102')">                            <span id="questionText" style="font-size: 14pt;"> Should governments do more to address climate change?      </span><br>    <textarea id="answer102" oninput="saveCheckboxState('answer102')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question103" onclick="saveCheckboxState('question103')">                            <span id="questionText" style="font-size: 14pt;"> Is it better to buy a house or rent one?      </span><br>    <textarea id="answer103" oninput="saveCheckboxState('answer103')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question104" onclick="saveCheckboxState('question104')">                            <span id="questionText" style="font-size: 14pt;"> Should people invest incrypto currencies?      </span><br>    <textarea id="answer104" oninput="saveCheckboxState('answer104')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question105" onclick="saveCheckboxState('question105')">                            <span id="questionText" style="font-size: 14pt;"> Should cities be designed to be more walkable?      </span><br>    <textarea id="answer105" oninput="saveCheckboxState('answer105')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question106" onclick="saveCheckboxState('question106')">                            <span id="questionText" style="font-size: 14pt;"> ls it better to have a few close friends or many acquaintances?      </span><br>    <textarea id="answer106" oninput="saveCheckboxState('answer106')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question107" onclick="saveCheckboxState('question107')">                            <span id="questionText" style="font-size: 14pt;"> Is it better to be a specialist or a generalist intoday`s job market?      </span><br>    <textarea id="answer107" oninput="saveCheckboxState('answer107')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question108" onclick="saveCheckboxState('question108')">                            <span id="questionText" style="font-size: 14pt;"> Is it essential to stay informed about current events?      </span><br>    <textarea id="answer108" oninput="saveCheckboxState('answer108')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question109" onclick="saveCheckboxState('question109')">                            <span id="questionText" style="font-size: 14pt;"> ls it better to make decisions with the heart or the mind?      </span><br>    <textarea id="answer109" oninput="saveCheckboxState('answer109')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question110" onclick="saveCheckboxState('question110')">                            <span id="questionText" style="font-size: 14pt;"> Do you think a universal basic income would be beneficial?      </span><br>    <textarea id="answer110" oninput="saveCheckboxState('answer110')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question111" onclick="saveCheckboxState('question111')">                            <span id="questionText" style="font-size: 14pt;"> Should people be allowed to work remotely indefinitely?      </span><br>    <textarea id="answer111" oninput="saveCheckboxState('answer111')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question112" onclick="saveCheckboxState('question112')">                            <span id="questionText" style="font-size: 14pt;"> Is it better to live with regret or to never take risks at all?      </span><br>    <textarea id="answer112" oninput="saveCheckboxState('answer112')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question113" onclick="saveCheckboxState('question113')">                            <span id="questionText" style="font-size: 14pt;"> Should people prioritize personal happiness over professional success?      </span><br>    <textarea id="answer113" oninput="saveCheckboxState('answer113')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question114" onclick="saveCheckboxState('question114')">                            <span id="questionText" style="font-size: 14pt;"> ls it better to have a strict routine or a flexible schedule?      </span><br>    <textarea id="answer114" oninput="saveCheckboxState('answer114')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question115" onclick="saveCheckboxState('question115')">                            <span id="questionText" style="font-size: 14pt;"> Should people aim to make a large impact or find contentment in small achievements?      </span><br>    <textarea id="answer115" oninput="saveCheckboxState('answer115')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question116" onclick="saveCheckboxState('question116')">                            <span id="questionText" style="font-size: 14pt;"> Is it better to be realistic or optimistic?      </span><br>    <textarea id="answer116" oninput="saveCheckboxState('answer116')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question117" onclick="saveCheckboxState('question117')">                            <span id="questionText" style="font-size: 14pt;"> ls it crucial to have a mentor in life?      </span><br>    <textarea id="answer117" oninput="saveCheckboxState('answer117')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question118" onclick="saveCheckboxState('question118')">                            <span id="questionText" style="font-size: 14pt;"> Should we strive to live minimally?      </span><br>    <textarea id="answer118" oninput="saveCheckboxState('answer118')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question119" onclick="saveCheckboxState('question119')">                            <span id="questionText" style="font-size: 14pt;"> Is it more important to have a good characteror to be intelligent?      </span><br>    <textarea id="answer119" oninput="saveCheckboxState('answer119')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question120" onclick="saveCheckboxState('question120')">                            <span id="questionText" style="font-size: 14pt;"> Should people prioritize saving for the future or enjoying the present?      </span><br>    <textarea id="answer120" oninput="saveCheckboxState('answer120')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question121" onclick="saveCheckboxState('question121')">                            <span id="questionText" style="font-size: 14pt;"> ls it better to be self-taught or formally educated?      </span><br>    <textarea id="answer121" oninput="saveCheckboxState('answer121')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question122" onclick="saveCheckboxState('question122')">                            <span id="questionText" style="font-size: 14pt;"> Should society place more emphasis on mental health?      </span><br>    <textarea id="answer122" oninput="saveCheckboxState('answer122')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question123" onclick="saveCheckboxState('question123')">                            <span id="questionText" style="font-size: 14pt;"> Should people strive to be independent or is it okay to rely on others?      </span><br>    <textarea id="answer123" oninput="saveCheckboxState('answer123')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question124" onclick="saveCheckboxState('question124')">                            <span id="questionText" style="font-size: 14pt;"> ls it more important to innovate or to perfect existing solutions?      </span><br>    <textarea id="answer124" oninput="saveCheckboxState('answer124')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question125" onclick="saveCheckboxState('question125')">                            <span id="questionText" style="font-size: 14pt;"> Should individuals prioritize their own happiness over societal expectations?      </span><br>    <textarea id="answer125" oninput="saveCheckboxState('answer125')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question126" onclick="saveCheckboxState('question126')">                            <span id="questionText" style="font-size: 14pt;"> Should we prioritize environmental conservation over economic development?      </span><br>    <textarea id="answer126" oninput="saveCheckboxState('answer126')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question127" onclick="saveCheckboxState('question127')">                            <span id="questionText" style="font-size: 14pt;"> Should people strive to achieve perfection?      </span><br>    <textarea id="answer127" oninput="saveCheckboxState('answer127')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question128" onclick="saveCheckboxState('question128')">                            <span id="questionText" style="font-size: 14pt;"> Is it more important to win or to participate?      </span><br>    <textarea id="answer128" oninput="saveCheckboxState('answer128')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question129" onclick="saveCheckboxState('question129')">                            <span id="questionText" style="font-size: 14pt;"> Should people invest more in experiences or material possessions?      </span><br>    <textarea id="answer129" oninput="saveCheckboxState('answer129')"></textarea>    </p>    
+<p class="vk_block-margin-xxs--margin-bottom">  <input type="checkbox" id="question130" onclick="saveCheckboxState('question130')">                            <span id="questionText" style="font-size: 14pt;"> Should society value intelligence over kindness?      </span><br>    <textarea id="answer130" oninput="saveCheckboxState('answer130')"></textarea>    </p>    
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll('[id="questionText"]').forEach((el, index) => {
+    el.innerHTML = `${index + 1}. ${el.innerHTML.trim()}`;
+  });
+});
+</script>
+</body>
+</html>

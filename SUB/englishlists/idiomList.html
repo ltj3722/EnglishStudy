@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>熟語一覧</title>
+  <style>
+    .hidden {
+      display: none;
+    }    
+  #wordTable {
+    margin-left: 0; /* 左側の余白をなくす */
+  }
+    table {
+      border-collapse: collapse;
+      margin: 20px auto;
+    }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    tbody tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+  <script>
+    function toggleMeaning(button) {
+      const meaningCell = button.parentElement.nextElementSibling.nextElementSibling;
+	  const wordCell = button.parentElement.nextElementSibling;
+      //meaningCell.classList.toggle("hidden");
+      button.textContent = meaningCell.classList.contains("hidden") ? "show" : "hide";
+	  wordCell.innerHTML = wordCell.innerHTML + " | " + meaningCell.innerHTML
+    }
+  </script>    
+</head>
+<body>
+
+<h2 style="text-align:center;">熟語一覧（英語と意味）</h2>
+<table id="wordTable">
+  <thead>
+    <tr>
+      <th>Word</th>
+      <th>Mean</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- JavaScriptがここにデータを挿入します -->
+  </tbody>
+</table>
+
+<script>
+//let idomListUrl = 'https://objectstorage.us-ashburn-1.oraclecloud.com/n/dbcloudoci/b/Taejong_bucket-20211029/o/English%2Fenglishlists%2F%E7%86%9F%E8%AA%9E.txt';
+let idomListUrl = 'https://objectstorage.us-ashburn-1.oraclecloud.com/p/BpcPE66mN68pW8ktnnNz_Kdhv17lQuUf4K9SV9YrFOz7qDSeTRMZJK_78tA3qeqw/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/%E7%86%9F%E8%AA%9E.txt'
+
+
+// 単語ファイルを読み込んでテーブルに表示
+fetch(idomListUrl)
+//fetch('file:///D:/share/englishstudy/熟語.txt')
+  .then(response => response.text())
+  .then(text => {
+    const lines = text.split('\n');
+    const tbody = document.querySelector('#wordTable tbody');
+
+    lines.forEach(line => {
+      // 空行を無視
+      if (!line.trim()) return;
+
+      // タブまたは複数スペースで分割（厳密には整理されていない可能性があるため）
+      const parts = line.trim().split(/\s{2,}|\t+/);
+      const word = parts[0] || '';
+      const meaning = parts.slice(1).join(' ') || '';
+
+      const row = document.createElement('tr');
+      row.innerHTML = `<td><button onclick="toggleMeaning(this)">show</button></td><td>${word}</td><td class="meaning hidden" >${meaning}</td>`;
+      tbody.appendChild(row);
+    });
+  })
+  .catch(err => {
+    console.error('読み込みエラー:', err);
+    document.getElementById('wordTable').insertAdjacentHTML('afterend', '<p style="color:red; text-align:center;">ファイルの読み込みに失敗しました。</p>');
+  });
+</script>
+
+</body>
+</html>

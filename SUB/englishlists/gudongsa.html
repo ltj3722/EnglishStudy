@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>구동사</title>
+  <style>
+    .orange {
+      color: orange;
+    }
+    .blue {
+      color: blue;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+// let idomListUrl = "https://objectstorage.us-ashburn-1.oraclecloud.com/n/dbcloudoci/b/Taejong_bucket-20211029/o/English%2Fenglishlists%2Fgudongsa.txt"
+
+let idomListUrl = "https://objectstorage.us-ashburn-1.oraclecloud.com/p/VxP1ttewZx-1-3QqKAhUm1FKzHTjQpib4xf-9ITJRbINPXlZmMvCMvtv1c3bytZe/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/gudongsa.txt";
+let orangeJSON = "https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qlbf8KcnQbYHcoypWR0mGpjU_IQwmVAk8UkcUOp9GGacuLG55MKOUvOtRMVqzSYe/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/orangeTexts.json";
+let blueJSON = "https://objectstorage.us-ashburn-1.oraclecloud.com/p/JQ2jZ1F0WE88O1k19cI3aha5tA6oDcfWFbK3tQmBQFCFJQQ1bh-rX04Lb4nQ_4L2/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/blueTexts.json";
+
+function updateServerData(data) {
+  let orangeJSON = "https://objectstorage.us-ashburn-1.oraclecloud.com/p/Qlbf8KcnQbYHcoypWR0mGpjU_IQwmVAk8UkcUOp9GGacuLG55MKOUvOtRMVqzSYe/n/dbcloudoci/b/Taejong_bucket-20211029/o/English/englishlists/orangeTexts.json";
+  
+  console.log(data);
+  fetch(orangeJSON, {  // orangeJSON の URLにデータを送信
+    method: 'PUT',  // PUTメソッドに変更
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data), // 新しいデータをJSON形式で送信
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Failed to update orangeTexts.json');
+    }
+    console.log('orangeTexts.json has been updated successfully');
+  })
+  .catch(error => {
+    console.error('Error updating orangeTexts.json:', error);
+  });
+}
+
+
+let savedOrangeTexts = [];
+
+fetch(orangeJSON)
+  .then(response => {
+    if (response.ok) {
+      return response.json(); // JSONをパース
+    } else {
+      throw new Error('Failed to fetch data');
+    }
+  })
+  .then(data => {
+    savedOrangeTexts = data; // 取得したデータを保存
+    if (!Array.isArray(savedOrangeTexts)) {
+      savedOrangeTexts = [];
+    }
+    console.log(savedOrangeTexts); // データをコンソールに表示
+  })
+  .catch(error => {
+    console.error('orangeTexts.jsonの取得に失敗:', error); // エラーハンドリング
+  });
+
+
+
+
+//fetch(orangeJSON, {
+//  headers: {
+//    'Cache-Control': 'no-cache' // キャッシュを無効にする
+//  }
+//})
+//  .then(response => {
+//    if (response.ok) {
+//      return response.json(); // JSONをパース
+//    } else {
+//      throw new Error('Failed to fetch data');
+//    }
+//  })
+//  .then(data => {
+//    savedOrangeTexts = data;
+//    if (!Array.isArray(savedOrangeTexts)) {
+//      savedOrangeTexts = [];
+//    }
+//    console.log(savedOrangeTexts); // データをコンソールに表示
+//  })
+//  .catch(error => {
+//    console.error('orangeTexts.jsonの取得に失敗:', error); // エラーハンドリング
+//  });
+
+
+console.log(savedOrangeTexts); // データをコンソールに表示
+
+
+    let savedBlueTexts = [];
+fetch(blueJSON)
+  .then(response => {
+    if (response.ok) {
+      return response.json(); // JSONをパース
+    } else {
+      throw new Error('Failed to fetch data');
+    }
+  })
+  .then(data => {
+    savedBlueTexts = data; // 取得したデータを保存
+    if (!Array.isArray(savedBlueTexts)) {
+      savedBlueTexts = [];
+    }
+    console.log(savedBlueTexts); // データをコンソールに表示
+  })
+  .catch(error => {
+    console.error('orangeTexts.jsonの取得に失敗:', error); // エラーハンドリング
+  });
+
+
+fetch(idomListUrl)
+  .then(response => response.text())
+  .then(async text => {
+    const lines = text.split('\n');
+    const container = document.createElement('div');
+    lines.forEach(line => {
+      if (line.trim() === '') {
+        console.log("Space");
+      } else if (line.startsWith('\t')) {
+        const textContent = line.trim();
+        const div = document.createElement('div');
+        div.className = 'example';
+        div.textContent = textContent;
+		
+
+        if (savedOrangeTexts.includes(textContent)) {
+		  console.log("####",textContent)
+          div.classList.add('orange');
+        }
+        if (savedBlueTexts.includes(textContent)) {
+          div.classList.add('blue');
+        }		
+		
+        let pressTimer = null;
+        let isLongPress = false;
+
+        div.addEventListener('click', () => {
+          if (isLongPress) {
+            // 長押し後のクリックは無視
+            isLongPress = false;
+            return;
+          }
+
+          // 通常クリック → オレンジ状態の切り替え
+          div.classList.toggle('orange');
+          if (div.classList.contains('orange')) {
+            if (!savedOrangeTexts.includes(textContent)) {
+              savedOrangeTexts.push(textContent);
+            }
+          } else {
+            savedOrangeTexts = savedOrangeTexts.filter(t => t !== textContent);
+          }
+          updateServerData(savedOrangeTexts); // オレンジの状態をサーバーに保存
+        });
+		
+		
+		container.appendChild(div);
+        
+
+      } else {
+        const h3 = document.createElement('h3');
+        h3.textContent = line.trim();
+        container.appendChild(h3);
+      }
+    });
+    document.body.appendChild(container);	
+  })
+  .catch(error => {
+    console.error('Error fetching the data:', error); // エラーハンドリング
+  });
+  
+
+
+</script>
+
+</body>
+</html>
