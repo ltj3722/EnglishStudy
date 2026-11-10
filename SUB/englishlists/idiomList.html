@@ -55,8 +55,16 @@
 //let idomListUrl = '8%AA%9E.txt';
 //let idomListUrl = '熟語.txt'
 
-const idiomListUrl = './熟語.txt';
-
+const idiomListUrl = '熟語.txt';
+fetch(idiomListUrl)
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(
+        `熟語.txtの取得に失敗: HTTP ${response.status}`
+      );
+    }
+    return response.text();
+  })
 
 
 	
