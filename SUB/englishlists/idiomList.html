@@ -51,11 +51,12 @@
   </tbody>
 </table>
 
-<script>
-//let idomListUrl = '8%AA%9E.txt';
-//let idomListUrl = '熟語.txt'
 
-const idiomListUrl = '熟語.txt';
+<script>
+// 熟語ファイルのURL
+const idiomListUrl = './熟語.txt';
+
+// 熟語ファイルを読み込んでテーブルに表示
 fetch(idiomListUrl)
   .then(response => {
     if (!response.ok) {
@@ -65,37 +66,78 @@ fetch(idiomListUrl)
     }
     return response.text();
   })
-
-
-	
-
-// 単語ファイルを読み込んでテーブルに表示
-fetch(idomListUrl)
-//fetch('file:///D:/share/englishstudy/熟語.txt')
-  .then(response => response.text())
   .then(text => {
-    const lines = text.split('\n');
+    const lines = text.split(/\r?\n/);
     const tbody = document.querySelector('#wordTable tbody');
+
+    // 既存の行をクリア
+    tbody.replaceChildren();
 
     lines.forEach(line => {
       // 空行を無視
       if (!line.trim()) return;
 
-      // タブまたは複数スペースで分割（厳密には整理されていない可能性があるため）
+      // タブまたは複数スペースで分割
       const parts = line.trim().split(/\s{2,}|\t+/);
       const word = parts[0] || '';
       const meaning = parts.slice(1).join(' ') || '';
 
+      // テーブルの行を作成
       const row = document.createElement('tr');
-      row.innerHTML = `<td><button onclick="toggleMeaning(this)">show</button></td><td>${word}</td><td class="meaning hidden" >${meaning}</td>`;
+
+      // Showボタン
+      const buttonCell = document.createElement('td');
+      const button = document.createElement('button');
+      button.textContent = 'show';
+
+      // 英熟語
+      const wordCell = document.createElement('td');
+      wordCell.textContent = word;
+
+      // 日本語の意味（初期状態は非表示）
+      const meaningCell = document.createElement('td');
+      meaningCell.textContent = meaning;
+      meaningCell.classList.add('meaning', 'hidden');
+
+      // Show / Hide 切り替え
+      button.addEventListener('click', () => {
+        meaningCell.classList.toggle('hidden');
+
+        button.textContent =
+          meaningCell.classList.contains('hidden')
+            ? 'show'
+            : 'hide';
+      });
+
+      buttonCell.appendChild(button);
+      row.appendChild(buttonCell);
+      row.appendChild(wordCell);
+      row.appendChild(meaningCell);
+
       tbody.appendChild(row);
     });
+
+    console.log(
+      '熟語ファイルの読み込み成功:',
+      tbody.rows.length,
+      '件'
+    );
   })
   .catch(err => {
     console.error('読み込みエラー:', err);
-    document.getElementById('wordTable').insertAdjacentHTML('afterend', '<p style="color:red; text-align:center;">ファイルの読み込みに失敗しました。</p>');
+
+    // PC・iPhoneの両方でエラー内容を表示
+    const errorMessage = document.createElement('p');
+    errorMessage.style.color = 'red';
+    errorMessage.style.textAlign = 'center';
+    errorMessage.textContent =
+      '熟語ファイルの読み込みに失敗しました: ' + err.message;
+
+    document.getElementById('wordTable')
+      .insertAdjacentElement('afterend', errorMessage);
   });
 </script>
+
 
 </body>
 </html>
