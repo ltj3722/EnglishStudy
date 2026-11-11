@@ -1,27 +1,27 @@
-life expectancy　　　　　　　　　　　　　　　　　　　　：平均寿命
-has increased　　　　　　　　　　　　　　　　　　　　：増加した・増加してきた
-longer than before　　　　　　　　　　　　　　　　　：以前より長い
-The work environment has changed.　　　　　　　　：職場環境が変化した。
-Working conditions have improved.　　　　　　　　：労働条件が改善した。
-disposable utensils　　　　　　　　　　　　　　　　　　：使い捨て食器
-reusable utensils　　　　　　　　　　　　　　　　　　　：再利用できる食器
-single-use utensils　　　　　　　　　　　　　　　　　　：一度しか使わない食器
-generate a lot of waste　　　　　　　　　　　　　　：大量の廃棄物を生み出す
-opportunities to learn　　　　　　　　　　　　　　　　：学ぶ機会
-various opportunities　　　　　　　　　　　　　　　：さまざまな機会
-at school　　　　　　　　　　　　　　　　　　　　　　　　：学校で（学校という場所・制度で）
-strict regulations　　　　　　　　　　　　　　　　　：厳しい規制
-restrict advertisements　　　　　　　　　　　　　　　：広告を制限する
-impose restrictions on advertisements　　　　　　　：広告に規制を課す
-double-check　　　　　　　　　　　　　　　　　　　　　　：再確認する
-rely on ～　　　　　　　　　　　　　　　　　　　　　　：〜を頼りにする、〜を信頼する
-before relying on them　　　　　　　　　　　　　　　　：それらを参考にする前に
-reduce homework　　　　　　　　　　　　　　　　　　　　：宿題を減らす
-reduce the amount of homework　　　　　　　　　　　　：宿題の量を減らす
-The number of local communities is decreasing.　：地域コミュニティの数が減少している。
-be in a difficult situation　　　　　　　　　　　　　：困難な状況にある
-when it comes to ～　　　　　　　　　　　　　　　　　：～に関しては
-need more support from ～　　　　　　　　　　　　　　　：～からより多くの支援を必要とする
-as early as possible　　　　　　　　　　　　　　　　　：できるだけ早く
-as soon as possible　　　　　　　　　　　　　　　　　　：できるだけすぐに
+life expectancy　　　　　　　　　　　　　　　　　　　　　　　　平均寿命
+has increased　　　　　　　　　　　　　　　　　　　　　　　　増加した・増加してきた
+longer than before　　　　　　　　　　　　　　　　　　　　　以前より長い
+The work environment has changed.　　　　　　　　　　　　職場環境が変化した。
+Working conditions have improved.　　　　　　　　　　　　労働条件が改善した。
+disposable utensils　　　　　　　　　　　　　　　　　　　　　　使い捨て食器
+reusable utensils　　　　　　　　　　　　　　　　　　　　　　　再利用できる食器
+single-use utensils　　　　　　　　　　　　　　　　　　　　　　一度しか使わない食器
+generate a lot of waste　　　　　　　　　　　　　　　　　　大量の廃棄物を生み出す
+opportunities to learn　　　　　　　　　　　　　　　　　　　　学ぶ機会
+various opportunities　　　　　　　　　　　　　　　　　　　さまざまな機会
+at school　　　　　　　　　　　　　　　　　　　　　　　　　　　　学校で（学校という場所・制度で）
+strict regulations　　　　　　　　　　　　　　　　　　　　　厳しい規制
+restrict advertisements　　　　　　　　　　　　　　　　　　　広告を制限する
+impose restrictions on advertisements　　　　　　　　　　　広告に規制を課す
+double-check　　　　　　　　　　　　　　　　　　　　　　　　　　再確認する
+rely on ～　　　　　　　　　　　　　　　　　　　　　　　　　　〜を頼りにする、〜を信頼する
+before relying on them　　　　　　　　　　　　　　　　　　　　それらを参考にする前に
+reduce homework　　　　　　　　　　　　　　　　　　　　　　　　宿題を減らす
+reduce the amount of homework　　　　　　　　　　　　　　　　宿題の量を減らす
+The number of local communities is decreasing.　　　　　地域コミュニティの数が減少している。
+be in a difficult situation　　　　　　　　　　　　　　　　　困難な状況にある
+when it comes to ～　　　　　　　　　　　　　　　　　　　　　～に関しては
+need more support from ～　　　　　　　　　　　　　　　　　　　～からより多くの支援を必要とする
+as early as possible　　　　　　　　　　　　　　　　　　　　　できるだけ早く
+as soon as possible　　　　　　　　　　　　　　　　　　　　　　できるだけすぐに
 It takes a long time to study English.
