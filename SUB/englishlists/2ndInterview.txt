@@ -1,9 +1,16 @@
+keep + 目的語 + -ing               keeping universities operating
+concentrate on + 名詞 が正しい                   concentrate more on their work
+contribute to の後は名詞または動名詞  	contributes to satisfying
+during の後には名詞が必要            during the elections.
 need support to + 動詞
 provide support for + 名詞(動名詞)
+important for + 名詞(動名詞) learning
 help + 人 + 動詞
+reduce  our energy consumption.                   reduceの後ろには名詞が一般的
 Having weapons is dangerous.                        動名詞句が主語なので is が必要
 opportunities to speak                             opportunityの後ろに動詞が使用される場合はtoを使用する。
 has increased　　　　　　　　　　　　　　　　　　　　　　　　増加した・増加してきた
+the number of festivals is decreasing.
 life expectancy　　　　　　　　　　　　　　　　　　　　　　　　平均寿命
 longer than before　　　　　　　　　　　　　　　　　　　　　以前より長い
 The work environment has changed.　　　　　　　　　　　　職場環境が変化した。
@@ -27,11 +34,10 @@ use social media more                            SNSをもっと利用する
 should leave national defense to the government.  leave + 物事 + to + 人
 conserve energy                                   ～を節約する
 We have a shortage of energy.
-reduce  our energy consumption.                   reduceの後ろには名詞が一般的
 Homeless people need help                        to helpはHomelessの人が支援をする意味
 make public areas cleaner　　　　　　　　　　　　　　　make + 目的語 + 形容詞
 Language is an important part of culture.
-keep a balance between work and their private lives.
+maintain a balance between work and their personal lives.
 Children need to support their parents.           子供が親を支援する必要がある意味になる。
 Children need support in learning how to use their money. 
 maintain academic performance                   学業成績を維持する
